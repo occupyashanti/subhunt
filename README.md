@@ -1,7 +1,6 @@
 # 🔍 SubHunt  
 **Automated Subdomain & Vulnerability Reconnaissance Tool**  
 
-### Option 2: ASCII Art Banner
 ```text
   _____       _    _                 _   
  / ____| _   _| |__| |__   ___  _ __| |_ 
