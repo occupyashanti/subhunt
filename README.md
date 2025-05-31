@@ -75,7 +75,7 @@ SubHunt/
 ---
 
 ##  **License**  
-MIT © [Your Name](https://github.com/your-username)  
+MIT © [occupyashanti](https://github.com/occupyashanti)  
 
 ---
 
