@@ -1,5 +1,5 @@
 
-# 🔍 SubHunt  
+# SubHunt  
 ### **Automated Subdomain & Vulnerability Reconnaissance Tool**  
 
 ```text
@@ -15,7 +15,7 @@ A powerful **offensive reconnaissance** tool that automates subdomain discovery,
 
 ---
 
-## ✨ **Features**  
+## **Features**  
 ✔ **Subdomain Enumeration** – Combines [Subfinder](https://github.com/projectdiscovery/subfinder) & [Amass](https://github.com/OWASP/Amass) for maximum coverage.  
 ✔ **Live Host Detection** – Uses [HTTPX](https://github.com/projectdiscovery/httpx) to filter active web services.  
 ✔ **Port Scanning** – Lightweight [Nmap](https://nmap.org) scans for open ports.  
@@ -25,7 +25,7 @@ A powerful **offensive reconnaissance** tool that automates subdomain discovery,
 
 ---
 
-## ⚡ **Quick Start**  
+## **Quick Start**  
 
 ### **Installation**  
 ```bash
@@ -48,7 +48,7 @@ chmod +x recon.sh
 
 ---
 
-## 📂 **Output Structure**  
+##  **Output Structure**  
 ```text
 SubHunt/
 ├── scans/
@@ -74,7 +74,7 @@ SubHunt/
 
 ---
 
-## 📜 **License**  
+##  **License**  
 MIT © [Your Name](https://github.com/your-username)  
 
 ---
@@ -84,7 +84,7 @@ MIT © [Your Name](https://github.com/your-username)
 - **Modular** – Easily extend with new tools.  
 - **Bug Bounty Ready** – Perfect for initial recon.  
 
-🚀 **Happy Hunting!**  
+**Happy Hunting!**  
 
 ---
 
