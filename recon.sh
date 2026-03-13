@@ -1,111 +1,191 @@
 #!/bin/bash
 
-# SubHunt - Automated Subdomain & Vulnerability Hunter
-# Fixed version with proper error handling
+# SubHunt Pro - Automated Recon & Vulnerability Discovery
+# Improved version with better performance, URL discovery, and correct vulnerability checks
 
-# ANSI Color Codes
+set -e
+
+# -------------------------
+# ANSI Colors
+# -------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Banner Function
+# -------------------------
+# Banner
+# -------------------------
 display_banner() {
-    echo -e "${RED}"
-    echo '  ____       _    _                 _   '
-    echo ' / ___| _   _| |__| |__   ___  _ __| |_ '
-    echo ' \___ \| | | | '\''_ \ '\''_ \ / _ \| '\''__| __|'
-    echo '  ___) | |_| | | | | | | (_) | |  | |_ '
-    echo ' |____/ \__,_|_| |_| |_|\___/|_|   \__|'
-    echo -e "${NC}"
-    echo -e "${YELLOW}        The Subdomain Hunter${NC}"
-    echo -e "${BLUE}-------------------------------------${NC}"
-    echo -e "Starting reconnaissance against: ${GREEN}$1${NC}"
-    echo -e "${BLUE}-------------------------------------${NC}"
-    echo ""
+echo -e "${RED}"
+echo "   _____       _     _    _             _"
+echo "  / ____|     | |   | |  | |           | |"
+echo " | (___  _   _| |__ | |__| |_   _ _ __ | |_"
+echo "  \___ \| | | | '_ \|  __  | | | | '_ \| __|"
+echo "  ____) | |_| | |_) | |  | | |_| | | | | |_"
+echo " |_____/ \__,_|_.__/|_|  |_|\__,_|_| |_|\__|"
+echo -e "${NC}"
+
+echo -e "${YELLOW} Automated Recon & Vulnerability Hunter ${NC}"
+echo -e "${BLUE}------------------------------------------${NC}"
+echo -e "Target: ${GREEN}$1${NC}"
+echo -e "${BLUE}------------------------------------------${NC}"
+echo ""
 }
 
-# Check if domain is provided
+# -------------------------
+# Usage check
+# -------------------------
 if [ "$#" -ne 1 ]; then
-    echo -e "${RED}[!] Usage: $0 <target-domain>${NC}"
-    exit 1
+echo -e "${RED}Usage: $0 <target-domain>${NC}"
+exit 1
 fi
-
-# Display Banner
-display_banner "$1"
 
 domain=$1
 output_dir="recon/$domain"
+
+display_banner "$domain"
+
 mkdir -p "$output_dir"
 
-# Configuration
-tools_required=("subfinder" "amass" "httpx" "nmap" "gf" "gowitness")
+# -------------------------
+# Required tools
+# -------------------------
+tools_required=(
+subfinder
+amass
+httpx
+nmap
+gf
+gau
+waybackurls
+katana
+gowitness
+)
 
-# Check for required tools
 missing_tools=()
+
 for tool in "${tools_required[@]}"; do
-    if ! command -v "$tool" &> /dev/null; then
-        missing_tools+=("$tool")
-    fi
+if ! command -v "$tool" &> /dev/null; then
+missing_tools+=("$tool")
+fi
 done
 
 if [ ${#missing_tools[@]} -gt 0 ]; then
-    echo -e "${RED}[!] Error: Missing required tools:${NC}"
-    for tool in "${missing_tools[@]}"; do
-        echo -e "${RED}- $tool${NC}"
-    done
-    exit 1
+echo -e "${RED}[!] Missing required tools:${NC}"
+for tool in "${missing_tools[@]}"; do
+echo -e " - $tool"
+done
+exit 1
 fi
 
+# -------------------------
 # Logging function
+# -------------------------
 log() {
-    echo -e "${BLUE}[+]${NC} $1"
+echo -e "${BLUE}[+]${NC} $1"
 }
 
-# Main recon process
-log "Starting subdomain enumeration..."
+# -------------------------
+# Subdomain Enumeration
+# -------------------------
+log "Running subdomain enumeration..."
+
 {
-    subfinder -d "$domain" -silent
-    amass enum -passive -d "$domain" -silent
-} | sort -u > "$output_dir/subdomains.txt" || {
-    echo -e "${RED}[!] Subdomain enumeration failed${NC}"
-    exit 1
-}
+subfinder -d "$domain" -silent -t 50
+amass enum -passive -d "$domain" -silent
+} | sort -u > "$output_dir/subdomains.txt"
 
-subdomain_count=$(wc -l < "$output_dir/subdomains.txt")
-log "Found $subdomain_count unique subdomains"
+sub_count=$(wc -l < "$output_dir/subdomains.txt")
 
-log "Checking for live subdomains..."
-httpx -silent -title -status-code -tech-detect -follow-redirects \
-    -l "$output_dir/subdomains.txt" -o "$output_dir/live_subdomains.txt" || {
-    echo -e "${RED}[!] Live host detection failed${NC}"
-    exit 1
-}
+log "Discovered $sub_count unique subdomains"
+
+# -------------------------
+# Live Host Detection
+# -------------------------
+log "Checking live web services..."
+
+httpx \
+-l "$output_dir/subdomains.txt" \
+-silent \
+-title \
+-status-code \
+-tech-detect \
+-follow-redirects \
+-threads 50 \
+-o "$output_dir/live_subdomains.txt"
 
 live_count=$(wc -l < "$output_dir/live_subdomains.txt")
-log "Found $live_count live subdomains"
 
-log "Starting port scanning..."
-nmap -iL "$output_dir/subdomains.txt" -T4 --top-ports 1000 -oN "$output_dir/ports.txt" || {
-    echo -e "${RED}[!] Port scanning failed${NC}"
-    exit 1
-}
+log "Found $live_count live hosts"
 
-log "Running basic vulnerability pattern checks..."
-gf_patterns=("xss" "sqli" "lfi" "ssrf" "redirect")
-for pattern in "${gf_patterns[@]}"; do
-    gf "$pattern" "$output_dir/live_subdomains.txt" > "$output_dir/${pattern}_vulns.txt"
-    count=$(wc -l < "$output_dir/${pattern}_vulns.txt")
-    log "Found $count potential ${pattern^^} vulnerabilities"
+# Extract host URLs only
+cut -d' ' -f1 "$output_dir/live_subdomains.txt" > "$output_dir/live_hosts.txt"
+
+# -------------------------
+# URL Collection
+# -------------------------
+log "Collecting URLs..."
+
+gau "$domain" > "$output_dir/urls.txt"
+waybackurls "$domain" >> "$output_dir/urls.txt"
+
+log "Running crawler..."
+
+katana -list "$output_dir/live_hosts.txt" -silent >> "$output_dir/urls.txt"
+
+sort -u "$output_dir/urls.txt" -o "$output_dir/urls.txt"
+
+url_count=$(wc -l < "$output_dir/urls.txt")
+
+log "Collected $url_count URLs"
+
+# -------------------------
+# Vulnerability Pattern Detection
+# -------------------------
+log "Running vulnerability pattern checks..."
+
+patterns=("xss" "sqli" "lfi" "ssrf" "redirect")
+
+for pattern in "${patterns[@]}"; do
+
+cat "$output_dir/urls.txt" | gf "$pattern" > "$output_dir/${pattern}_vulns.txt"
+
+count=$(wc -l < "$output_dir/${pattern}_vulns.txt")
+
+log "Potential ${pattern^^}: $count findings"
+
 done
 
-log "Capturing screenshots..."
-gowitness file -f "$output_dir/live_subdomains.txt" -P "$output_dir/screenshots" \
-    --delay 5 --timeout 30 --threads 4 || {
-    echo -e "${RED}[!] Screenshot capture failed${NC}"
-    exit 1
-}
+# -------------------------
+# Port Scanning
+# -------------------------
+log "Running fast port scan on live hosts..."
 
-echo -e "${GREEN}[+] Reconnaissance completed successfully. Results saved in $output_dir${NC}"
+nmap \
+-iL "$output_dir/live_hosts.txt" \
+--top-ports 100 \
+-T4 \
+-oN "$output_dir/ports.txt"
+
+# -------------------------
+# Screenshots
+# -------------------------
+log "Capturing screenshots..."
+
+gowitness file \
+-f "$output_dir/live_hosts.txt" \
+-P "$output_dir/screenshots" \
+--threads 8 \
+--timeout 20
+
+# -------------------------
+# Final Output
+# -------------------------
+echo ""
+echo -e "${GREEN}Recon completed successfully!${NC}"
+echo -e "${YELLOW}Results saved to:${NC} $output_dir"
+echo ""
+
 tree "$output_dir"
